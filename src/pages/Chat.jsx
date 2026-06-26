@@ -49,6 +49,13 @@ export default function Chat() {
       setMessages((p) => [...p, msg])
       socket.emit('mark_seen')
     })
+
+    socket.on('message_deleted_everyone', ({ messageId }) => {
+  setMessages((p) => p.map((m) =>
+    m._id === messageId ? { ...m, deletedForEveryone: true, text: '', image: '' } : m
+  ))
+})
+
     socket.on('message_saved', (msg) => setMessages((p) => [...p, msg]))
     socket.on('messages_seen', () =>
       setMessages((p) => p.map((m) =>
@@ -218,14 +225,18 @@ export default function Chat() {
             </button>
           )}
 
-          {messages.map((msg, i) => (
-            <ChatBubble
-              key={msg._id || i}
-              message={msg}
-              isMine={msg.sender === user.username}
-              onImageClick={(url) => setPreviewImg(url)}
-            />
-          ))}
+        {messages.map((msg, i) => (
+  <ChatBubble
+    key={msg._id || i}
+    message={msg}
+    isMine={msg.sender === user.username}
+    onImageClick={(url) => setPreviewImg(url)}
+    onDeleteMe={(id) => setMessages((p) => p.filter((m) => m._id !== id))}
+    onDeleteEveryone={(id) => setMessages((p) => p.map((m) =>
+      m._id === id ? { ...m, deletedForEveryone: true, text: '', image: '' } : m
+    ))}
+  />
+))}
 
           <div ref={bottomRef} style={{ height: 6 }} />
         </div>
