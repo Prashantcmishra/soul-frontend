@@ -1,10 +1,12 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import api from '../services/api'
 import { getSocket } from '../socket/socket'
 
 export default function ChatBubble({ message, isMine, onImageClick, onDeleteMe, onDeleteEveryone }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [showDots, setShowDots] = useState(false)
+  const touchTimer = useRef(null)
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: '2-digit', minute: '2-digit'
@@ -44,11 +46,21 @@ export default function ChatBubble({ message, isMine, onImageClick, onDeleteMe, 
     }
   }
 
+  const openMenu = (e) => {
+    e.stopPropagation()
+    setMenuOpen(true)
+  }
+
+  const closeMenu = () => {
+    setMenuOpen(false)
+  }
+
+  // Deleted message — show placeholder
   if (message.deletedForEveryone) {
     return (
-      <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', marginBottom: 2, padding: '0 4px' }}>
-        <div style={{ ...s.bubble, background: 'transparent', border: '1px solid #2a2a2a' }}>
-          <p style={{ ...s.text, color: '#555', fontStyle: 'italic', fontSize: 13 }}>
+      <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', marginBottom: 4, padding: '0 8px' }}>
+        <div style={{ ...s.bubble, background: 'transparent', border: '1px solid #2a2a2a', maxWidth: '78%' }}>
+          <p style={{ ...s.text, color: '#555', fontStyle: 'italic', fontSize: 13, margin: 0 }}>
             🚫 Message deleted
           </p>
         </div>
@@ -57,57 +69,111 @@ export default function ChatBubble({ message, isMine, onImageClick, onDeleteMe, 
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start', marginBottom: 2, padding: '0 4px' }}>
-      <div style={{ position: 'relative', maxWidth: '78%' }}>
-
-        {/* Long press / tap menu trigger */}
+    <>
+      {/* Invisible overlay to close menu when tapping outside */}
+      {menuOpen && (
         <div
-          style={{ ...s.bubble, ...(isMine ? s.mine : s.theirs) }}
-          onContextMenu={(e) => { e.preventDefault(); setMenuOpen(true) }}
-          onTouchStart={() => {
-            const t = setTimeout(() => setMenuOpen(true), 500)
-            window._touchTimer = t
-          }}
-          onTouchEnd={() => clearTimeout(window._touchTimer)}
-          onTouchMove={() => clearTimeout(window._touchTimer)}
-        >
-          {message.type === 'image' && message.image ? (
-            <img
-              src={message.image}
-              alt="shared"
-              style={s.image}
-              onClick={() => onImageClick && onImageClick(message.image)}
-            />
-          ) : (
-            <p style={s.text}>{message.text}</p>
-          )}
-          <div style={s.meta}>
-            <span style={s.time}>{time}</span>
-            {status()}
-          </div>
-        </div>
+          style={{ position: 'fixed', inset: 0, zIndex: 998 }}
+          onClick={closeMenu}
+        />
+      )}
 
-        {/* Delete menu */}
-        {menuOpen && (
-          <>
-            <div style={s.menuOverlay} onClick={() => setMenuOpen(false)} />
-            <div style={{ ...s.menu, ...(isMine ? { right: 0 } : { left: 0 }) }}>
-              <button style={s.menuItem} onClick={handleDeleteMe} disabled={deleting}>
-                🗑️ Delete for me
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: isMine ? 'row-reverse' : 'row',
+          alignItems: 'flex-end',
+          gap: 6,
+          marginBottom: 4,
+          padding: '0 4px'
+        }}
+        onMouseEnter={() => setShowDots(true)}
+        onMouseLeave={() => !menuOpen && setShowDots(false)}
+      >
+        {/* Message bubble */}
+        <div style={{ position: 'relative', maxWidth: '78%' }}>
+          <div
+            style={{ ...s.bubble, ...(isMine ? s.mine : s.theirs) }}
+            onTouchStart={() => {
+              touchTimer.current = setTimeout(() => setMenuOpen(true), 500)
+            }}
+            onTouchEnd={() => clearTimeout(touchTimer.current)}
+            onTouchMove={() => clearTimeout(touchTimer.current)}
+            onContextMenu={(e) => { e.preventDefault(); setMenuOpen(true) }}
+          >
+            {message.type === 'image' && message.image ? (
+              <img
+                src={message.image}
+                alt="shared"
+                style={s.image}
+                onClick={() => !menuOpen && onImageClick && onImageClick(message.image)}
+              />
+            ) : (
+              <p style={s.text}>{message.text}</p>
+            )}
+            <div style={s.meta}>
+              <span style={s.time}>{time}</span>
+              {status()}
+            </div>
+          </div>
+
+          {/* Delete dropdown menu */}
+          {menuOpen && (
+            <div style={{
+              ...s.menu,
+              ...(isMine ? { right: 0 } : { left: 0 })
+            }}>
+              <button
+                style={s.menuItem}
+                onClick={handleDeleteMe}
+                disabled={deleting}
+              >
+                <span style={s.menuIcon}>🗑️</span>
+                Delete for me
               </button>
               {isMine && (
-                <button style={{ ...s.menuItem, color: '#ff4d6d' }} onClick={handleDeleteEveryone} disabled={deleting}>
-                  ❌ Delete for everyone
+                <button
+                  style={{ ...s.menuItem, ...s.menuItemDanger }}
+                  onClick={handleDeleteEveryone}
+                  disabled={deleting}
+                >
+                  <span style={s.menuIcon}>❌</span>
+                  Delete for everyone
                 </button>
               )}
-              <button style={{ ...s.menuItem, color: '#666' }} onClick={() => setMenuOpen(false)}>
+              <div style={s.menuDivider} />
+              <button
+                style={{ ...s.menuItem, color: '#666' }}
+                onClick={closeMenu}
+              >
+                <span style={s.menuIcon}>✕</span>
                 Cancel
               </button>
             </div>
-          </>
-        )}
+          )}
+        </div>
+
+        {/* 3-dot button — always visible on mobile, hover on desktop */}
+        <button
+          className="dots-btn"
+
+          style={{
+            ...s.dotsBtn,
+            opacity: (showDots || menuOpen) ? 1 : 0,
+            // On mobile always show it
+            '@media (max-width: 600px)': { opacity: 1 }
+          }}
+          onClick={openMenu}
+          aria-label="Message options"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#666">
+            <circle cx="12" cy="5" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="19" r="2" />
+          </svg>
+        </button>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -118,7 +184,8 @@ const s = {
     wordBreak: 'break-word',
     boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
     cursor: 'default',
-    userSelect: 'none'
+    userSelect: 'none',
+    position: 'relative'
   },
   mine: {
     background: 'linear-gradient(135deg, #b5179e, #7209b7)',
@@ -128,36 +195,86 @@ const s = {
     background: '#1e1e2e',
     borderBottomLeftRadius: 5
   },
-  text: { fontSize: 15, lineHeight: 1.5, color: '#fff', margin: 0 },
-  image: { width: '100%', maxWidth: 220, height: 'auto', borderRadius: 12, cursor: 'pointer', display: 'block' },
-  meta: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
+  text: {
+    fontSize: 15,
+    lineHeight: 1.5,
+    color: '#fff',
+    margin: 0
+  },
+  image: {
+    width: '100%',
+    maxWidth: 220,
+    height: 'auto',
+    borderRadius: 12,
+    cursor: 'pointer',
+    display: 'block'
+  },
+  meta: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 4
+  },
   time: { fontSize: 10, color: 'rgba(255,255,255,0.4)' },
   status: { fontSize: 10, color: 'rgba(255,255,255,0.4)' },
-  menuOverlay: {
-    position: 'fixed', inset: 0, zIndex: 100
+
+  // 3-dot button
+  dotsBtn: {
+    background: '#1a1a1a',
+    border: '1px solid #2a2a2a',
+    borderRadius: '50%',
+    width: 28,
+    height: 28,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    flexShrink: 0,
+    transition: 'opacity 0.15s',
+    padding: 0,
+    marginBottom: 4
   },
+
+  // Dropdown menu
   menu: {
     position: 'absolute',
-    bottom: '110%',
+    bottom: '108%',
     background: '#1a1a2e',
     border: '1px solid #2a2a3e',
-    borderRadius: 14,
+    borderRadius: 16,
     padding: '6px',
-    zIndex: 200,
-    minWidth: 180,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.5)'
+    zIndex: 999,
+    minWidth: 200,
+    boxShadow: '0 8px 32px rgba(0,0,0,0.6)'
   },
   menuItem: {
-    display: 'block',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
     width: '100%',
     background: 'transparent',
     border: 'none',
     color: '#f0f0f0',
-    padding: '10px 14px',
+    padding: '11px 14px',
     textAlign: 'left',
     cursor: 'pointer',
     fontSize: 14,
     borderRadius: 10,
-    fontFamily: 'inherit'
+    fontFamily: 'inherit',
+    transition: 'background 0.1s'
+  },
+  menuItemDanger: {
+    color: '#ff4d6d'
+  },
+  menuIcon: {
+    fontSize: 16,
+    width: 20,
+    textAlign: 'center'
+  },
+  menuDivider: {
+    height: 1,
+    background: '#2a2a3e',
+    margin: '4px 8px'
   }
 }

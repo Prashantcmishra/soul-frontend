@@ -172,16 +172,20 @@ export default function Chat() {
   return (
     <>
       <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html { height: 100%; }
-        body { height: 100%; background: #0d0d0d; overflow: hidden; }
-        #root { height: 100%; height: calc(var(--vh, 1vh) * 100); }
-        textarea:focus { outline: none; }
-        textarea { resize: none; font-family: inherit; }
-        ::-webkit-scrollbar { width: 0px; }
-        .msg-area { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-      `}</style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { height: 100%; }
+  body { height: 100%; background: #0d0d0d; overflow: hidden; }
+  #root { height: 100%; height: calc(var(--vh, 1vh) * 100); }
+  textarea:focus { outline: none; }
+  textarea { resize: none; font-family: inherit; }
+  ::-webkit-scrollbar { width: 0px; }
+  .msg-area { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 
+  /* Always show 3-dot button on touch devices */
+  @media (hover: none) {
+    .dots-btn { opacity: 1 !important; }
+  }
+`}</style>
       <div style={s.shell}>
 
         {/* ── Header ── */}
