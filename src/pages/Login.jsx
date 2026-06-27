@@ -20,8 +20,10 @@ export default function Login() {
       dispatch(setCredentials(data));
       navigate('/chat');
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
-    } finally {
+  setError(`🚫 Temporarily Blocked
+Reason: Dil dukha hai. 💔
+Retry after a few days...`);
+} finally {
       setLoading(false);
     }
   };
@@ -111,5 +113,18 @@ const styles = {
     cursor: 'pointer',
     marginTop: 4
   },
-  error: { color: '#ff4d6d', fontSize: 13, textAlign: 'center' }
+  error: {
+  color: '#ff4d6d',
+  background: 'rgba(255,77,109,0.08)',
+  border: '1px solid rgba(255,77,109,0.3)',
+  borderRadius: 10,
+  padding: '12px 16px',
+  textAlign: 'center',
+  whiteSpace: 'pre-line', // <-- Important
+  lineHeight: 1.6,
+  fontSize: 14,
+  width: '100%',
+  boxSizing: 'border-box',
+  margin: 0
+}
 };
