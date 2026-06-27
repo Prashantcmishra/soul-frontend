@@ -5,6 +5,7 @@ import { logout } from '../redux/authSlice'
 import { connectSocket, getSocket, disconnectSocket } from '../socket/socket'
 import ChatBubble from '../components/ChatBubble'
 import api from '../services/api'
+import { registerPush, unregisterPush } from '../services/push'
 
 export default function Chat() {
   const { user, token } = useSelector((s) => s.auth)
@@ -79,6 +80,10 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+  registerPush(api)
+}, [])
+
   const loadMessages = async (pg) => {
     setLoadingMore(true)
     try {
@@ -147,6 +152,7 @@ export default function Chat() {
   }
 
   const handleLogout = () => {
+    unregisterPush(api)
     disconnectSocket()
     dispatch(logout())
     navigate('/login')
